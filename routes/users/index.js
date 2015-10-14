@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var _ = require('lodash')
-var User = require('../models/User')
+var User = require('../../models/User')
 
 router
 .get('/', function(req, res, next) {
@@ -17,29 +17,33 @@ router
 		if(err) {
 			return console.error(err);
 		} 
-		res.json({response: true, user: user});
+		res.json({success: true, user: user});
 	});
 	// res.end();
 })
 .put('/:id', function(req, res) {
-	// User.findOneAndUpdate({ _id: req.body._id }, { $set: req.body }, function(err, user) {
-	// 	if(err) return console.error(err);
-	// 	console.log(user, newuser);
-	// 	res.json({response: true, user: user});
-	// });
-	User.findById(req.params.id, function(err, user) {
-		if (err) return console.error(err);
+	// find and update in one call to the database
+	User.findByIdAndUpdate(req.params.id, req.body, function(err, user) {
+		if(err) return console.error(err);
 		user = _.extend(user, req.body);
-		user.save(function(err, savedUser) {
-			res.json({response: true, user: savedUser});
-		});
-	})
+		res.json({success: true, user: user});
+	});
+
+
+	// if we need hooks and validation:
+	// User.findById(req.params.id, function(err, user) {
+	// 	if (err) return console.error(err);
+	// 	user = _.extend(user, req.body);
+	// 	user.save(function(err, savedUser) {
+	// 		res.json({success: true, user: savedUser});
+	// 	});
+	// })
 })
 .delete('/:id', function(req, res) {
 	console.log(req.params.id);
 	User.remove({_id: req.params.id}, function(err) {
 		if(err) return console.error(err);
-		res.json({response: true});
+		res.json({success: true});
 	})
 })
 

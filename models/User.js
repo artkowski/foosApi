@@ -2,8 +2,11 @@ var mongoose = require('mongoose'),
 	Schema = mongoose.Schema;
 
 var UserSchema = new Schema({
-	name: String
-});
+	name: String,
+	password: String,
+	admin: Boolean,
+	date: { type: Date, default: Date.now }
+}, { autoIndex: false });
 
 UserSchema.methods.myName = function() {
 	var greeting = this.name
