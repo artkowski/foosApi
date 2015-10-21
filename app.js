@@ -30,15 +30,25 @@ app.set('secret', config.secret);
 app.use('/', routes);
 // app.use('/', users);
 
+// how to error handling
+app.use(function(err, req, res, next) {
+	res.status(err.status || 500);
+	res.json({
+	  message: err.message,
+	  error: err
+	});
+});
+
 
 mongoose.connect(config.database);
-
+// otwieramy połaczenie do bazydanych
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function(callback) {
 	console.log('Db connection opend');
 });
 
+// server
 var server = app.listen(config.port, function() {
 	var host = server.address().address;
 	var port = server.address().port;

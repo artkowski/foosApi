@@ -9,7 +9,8 @@ router.use(function(req, res, next) {
 
 router.use('/auth', require('./auth'))
 router.use('/users', require('./users'))
-router.use('/league', require('./league'))
+router.use('/leagues', require('./leagues'))
+router.use('/leagues', require('./leagues/players'))
 
 router.get('/', function(req, res, next) {
 	// res.render('index', { title: 'Express' });
