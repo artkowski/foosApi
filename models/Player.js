@@ -2,7 +2,11 @@ var mongoose = require('mongoose'),
 	Schema = mongoose.Schema;
 
 var PlayerSchema = new Schema({
-	_league: { type: Number, ref: 'League'},
+	_league: { 
+		type: Schema.Types.ObjectId,
+		ref: 'League',
+		required: true
+	},
 	name: {
 		first: {type: String, required: true},
 		last: String

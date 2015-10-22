@@ -4,26 +4,35 @@ var League = require('../../models/League');
 
 router
 // getAll leagues
-.get('/', function(req, res) {
+.get('/', function(req, res, next) {
 	League.find(function(err, leagues) {
-		if(err) return res.status(500).json({ success: false, error: err });
+		if(err) next(err);
 		res.json(leagues);
 	})
 })
-// get leauge by ID
+// get league by ID
 .get('/:id', function(req, res, next) {
-	League.findById(req.params.id, function(err, league) {
-		if(err) return res.status(400).json({ success: false, error: err });
-		if(err) next(err);
+	League.findById(req.params.id)
+		// .populate('players')
+		.select({players: 0})
+		.populate('tournaments', {_league: 0})
+		.exec(function(err, league) {
+		if(err) {
+			err.status = 400;
+			next(err);
+		}
 		res.json(league);
 	})
 })
 // create league
 .post('/', function(req, res) {
 	var league = new League(req.body);
-	league.save(function(err, saved) {
-		if(err) return res.status(400).json({ success: false, error: err });
-		res.json({success: true, league: saved});
+	league.save(function(err) {
+		if(err) {
+			err.status = 400;
+			next(err);
+		}
+		res.json({success: true, league: league});
 	})
 })
 // edit league
@@ -31,11 +40,12 @@ router
 	League.findById(req.params.id, function(err, league) {
 		if (err) return res.status(400).json({success: false, error: err});
 		league = _.extend(league, req.body);
-		league.save(function(err, leagueUpdated) {
+		league.save(function(err) {
 			if(err) {
-				return res.status(400).json({success: false, error: err});
+				err.status = 400;
+				next(err);
 			}
-			res.json({success: true, league: leagueUpdated});
+			res.json({success: true, league: league});
 		});
 	});
 })

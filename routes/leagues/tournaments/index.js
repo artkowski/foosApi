@@ -1,68 +1,67 @@
 var express = require('express'),
 	router = express.Router(),
-	Player = require('../../models/Player'),
-	League = require('../../models/League'),
+	Tournament = require('../../../models/Tournament'),
+	League = require('../../../models/League'),
 	_ = require('lodash');
 
-var resource = '/:leagueId/players';
+var resource = '/:leagueId/tournaments';
 
 router
 .get(resource, function(req, res, next) {
-	console.log(req.params)
-	Player
+	Tournament
 		.find({_league: req.params.leagueId})
-		// .populate('_league')
-		.select({_league: false})
-		.sort({points: -1})
-		.exec(function(err, players) {
+		.sort({created: -1})
+		.exec(function(err, tournaments) {
 			if(err) return next(err);
-			res.json(players);
+			res.json(tournaments);
 		})
 })
 .post(resource, function(req, res, next) {
-	// create player
-	var player = new Player(req.body);
-	player._league = req.params.leagueId;
-	player.save(function(err) {
+	// craete tournament
+	var tournament = new Tournament(req.body);
+	// TODO optional leagueId
+	tournament._league = req.params.leagueId;
+	tournament.save(function(err) {
 		if(err) {
 			err.status = 400;
 			return next(err);
 		}
-		// dodanie player do ligi
+		// add to league
+		// TODO optional:
 		League.findById(req.params.leagueId, function(err, league) {
-			league.players.push(player);
+			league.tournaments.push(tournament);
 			league.save(function(err) {
-				if(err) return next(err);
-				// return success
+				if(err) next(err);
+				// success
 				res.json({
 					success: true,
-					player: player
+					tournament: tournament
 				});
 			});
-
 		});
+
 	});
 
 })
 .put(resource + '/:id', function(req, res, next) {
-	Player.findById(req.params.id, function(err, player) {
+	Tournament.findById(req.params.id, function(err, tournament) {
 		if(err) {
 			err.status = 400;
 			return next(err);
 		}
-		player = _.extend(player, req.body);
-		player.save(function(err) {
+		tournament = _.extend(tournament, req.body);
+		tournament.save(function(err) {
 			if(err) {
 				err.status = 400;
 				return next(err);
 			}
-			res.json({success: true, player: player});
+			res.json({success: true, tournament: tournament});
 		});
 	});
 })
 .delete(resource + '/:id', function(req, res, next) {
 	// console.log(req.params.id);
-	Player.remove({_id: req.params.id}, function(err) {
+	Tournament.remove({_id: req.params.id}, function(err) {
 		if(err) return next(err);
 		res.json({success: true});
 	})
