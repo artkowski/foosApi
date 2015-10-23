@@ -8,6 +8,7 @@ var TournamentSchema = new Schema({
 		required: true	// na razie required ale będzie można zrobić turniej poza ligą
 	},
 	name: {type: String, required: true},
+	desc: String,
 	startDate: {type: Date, required: true},
 	endDate: Date,
 	city: String,

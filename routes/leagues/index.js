@@ -15,7 +15,13 @@ router
 	League.findById(req.params.id)
 		// .populate('players')
 		.select({players: 0})
-		.populate('tournaments', {_league: 0})
+		.populate({
+			path: 'tournaments',
+			select: {_league: 0 },
+			options: {
+				sort: {created: -1}
+			}
+		})
 		.exec(function(err, league) {
 		if(err) {
 			err.status = 400;
