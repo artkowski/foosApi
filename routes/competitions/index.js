@@ -1,10 +1,10 @@
 var express = require('express'),
 	router = express.Router(),
-	Competition = require('../../../../models/Competition'),
-	Tournament = require('../../../../models/Tournament'),
+	Competition = require('../../models/Competition'),
+	Tournament = require('../../models/Tournament'),
 	_ = require('lodash');
 
-var resource = '/:leagueId/tournaments/:tournamentId/competitions';
+var resource = '/leagues/:leagueId/tournaments/:tournamentId/competitions';
 
 router
 .get(resource, function(req, res, next) {

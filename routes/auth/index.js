@@ -63,6 +63,7 @@ router
 				});
 			} else {
 				req.decoded = decoded;
+				console.log(decoded);
 				// zapisalismy rozkodowany token, przechodzimy do następnego middleware
 				next();
 			}

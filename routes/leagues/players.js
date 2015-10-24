@@ -4,7 +4,7 @@ var express = require('express'),
 	League = require('../../models/League'),
 	_ = require('lodash');
 
-var resource = '/:leagueId/players';
+var resource = '/leagues/:leagueId/players';
 
 router
 .get(resource, function(req, res, next) {

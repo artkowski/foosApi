@@ -1,10 +1,10 @@
 var express = require('express'),
 	router = express.Router(),
-	Tournament = require('../../../models/Tournament'),
-	Competition = require('../../../models/Competition'),
+	Tournament = require('../../models/Tournament'),
+	Competition = require('../../models/Competition'),
 	_ = require('lodash');
 
-var resource = '/:leagueId/tournaments';
+var resource = '/leagues/:leagueId/tournaments';
 
 router
 .get(resource, function(req, res, next) {
@@ -27,11 +27,11 @@ router
 			}
 		})
 		.exec(function(err, tournament) {
-		if(err) {
-			err.status = 400;
-			next(err);
-		}
-		res.json(tournament);
+			if(err) {
+				err.status = 400;
+				next(err);
+			}
+			res.json(tournament);
 	})
 })
 .post(resource, function(req, res, next) {
