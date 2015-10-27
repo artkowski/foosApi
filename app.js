@@ -48,6 +48,8 @@ db.once('open', function(callback) {
 	console.log('Db connection opend');
 });
 
+app.set('trust proxy', 'loopback', '127.0.0.1', '192.168.1.12');
+
 // server
 var server = app.listen(config.port, function() {
 	var host = server.address().address;

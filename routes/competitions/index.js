@@ -3,23 +3,35 @@ var express = require('express'),
 	Competition = require('../../models/Competition'),
 	Tournament = require('../../models/Tournament'),
 	Match = require('../../models/Match'),
+	CompetitionsCtrl = require('../../controllers/CompetitionsCtrl'),
 	_ = require('lodash');
 
 var resource = '/leagues/:leagueId/tournaments/:tournamentId/competitions';
 
 router
-.get(resource, function(req, res, next) {
-	Competition
-		.find({_tournament: req.params.tournamentId})
-		.sort({created: -1})
-		.exec(function(err, competition) {
-			if(err) return next(err);
-			res.json(competition);
-		})
-})
+.get(resource, CompetitionsCtrl.getAll)
+// 	function(req, res, next) {
+// 	Competition
+// 		.find({_tournament: req.params.tournamentId})
+// 		.sort({created: -1})
+// 		.exec(function(err, competition) {
+// 			if(err) return next(err);
+// 			res.json(competition);
+// 		})
+// })
 .get(resource + '/:id', function(req, res, next) {
 	Competition.findById(req.params.id)
-		.deepPopulate('matches.team1.players matches.team2.players')
+		.deepPopulate('matches.team1.players matches.team2.players', {
+			populate: {
+				'matches': {
+					options: {
+						sort: {
+							order: 1
+						}
+					}
+				}
+			}
+		})
 		.exec(function(err, competition) {
 			if(err) {
 				err.status = 400;
@@ -77,8 +89,8 @@ router
 		Competition
 		// szukamy competetion
 		.findById(competitionId)
-		// chcemy mieć drużyny podpięte
-		.deepPopulate('teams')	// deepPopulate - ustawione sortowanie
+		// chcemy mieć drużyny razem z graczami, bo później zostaną zwrócone
+		.deepPopulate('teams.players')	// deepPopulate - ustawione sortowanie
 		.exec(function(err, competition) {
 			if(err) return next(err);
 			// jak już mamy comeptition
@@ -124,13 +136,14 @@ function generateListOfMatches(competition) {
 		console.log('nb of teams', competition.teams.length);
 		// na podstawie special wiem które drużyny z jaką grają (wg rankingu)
 		var special = [
-			0, 1/2,	// 2 teams
-			1/4, 3/4,	// 4 teams
-			1/8, 5/8, 3/8, 7/8,	// 8 teams
-			1/16, 9/16, 5/16, 13/16, 3/16, 11/16, 7/16, 15/16, // 16 teams
+			0, 1/2,	// 2 matches
+			1/4, 3/4,	// 4 matches
+			1/8, 5/8, 3/8, 7/8,	// 8 matches
+			1/16, 9/16, 5/16, 13/16, 3/16, 11/16, 7/16, 15/16, // 16 matches
 			1/32, 17/32, 25/32, 9/32, 5/32, 21/32, 13/32, 29/32,
-			3/32, 19/32, 27/32, 11/32, 7/32, 23/32, 15/32, 31/32 //32 teams
+			3/32, 19/32, 27/32, 11/32, 7/32, 23/32, 15/32, 31/32 //32 matches
 		];
+		// ustawienie wielkości drzewka
 		var treeSize = 1;
 		while(treeSize < competition.teams.length) {
 			treeSize*= 2;
