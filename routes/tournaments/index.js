@@ -1,10 +1,18 @@
 var express = require('express'),
 	router = express.Router(),
 	Tournament = require('../../models/Tournament'),
-	Competition = require('../../models/Competition'),
+	League = require('../../models/League'),
 	_ = require('lodash');
 
 var resource = '/leagues/:leagueId/tournaments';
+
+var _getPopulateOptions = {
+	path: 'competitions',
+	select: {_tournament: 0 },
+	options: {
+		sort: {created: -1}
+	}
+};
 
 router
 .get(resource, function(req, res, next) {
@@ -19,17 +27,11 @@ router
 // get tournament by ID
 .get(resource + '/:id', function(req, res, next) {
 	Tournament.findById(req.params.id)
-		.populate({
-			path: 'competitions',
-			select: {_tournament: 0 },
-			options: {
-				sort: {created: -1}
-			}
-		})
+		.populate(_getPopulateOptions)
 		.exec(function(err, tournament) {
-			if(err) {
-				err.status = 400;
-				next(err);
+			if(err || !tournament) {
+				err = err || { status: 400 };
+				return next(err);
 			}
 			res.json(tournament);
 	})
@@ -47,6 +49,10 @@ router
 		// add to league
 		// TODO optional league:
 		League.findById(req.params.leagueId, function(err, league) {
+			if(err || !league) {
+				err = err || { status: 400 };
+				return next(err);
+			}
 			league.tournaments.push(tournament);
 			league.save(function(err) {
 				if(err) next(err);
@@ -62,9 +68,11 @@ router
 
 })
 .put(resource + '/:id', function(req, res, next) {
-	Tournament.findById(req.params.id, function(err, tournament) {
-		if(err) {
-			err.status = 400;
+	Tournament.findById(req.params.id)
+	.populate(_getPopulateOptions)
+	.exec(function(err, tournament) {
+		if(err || !tournament) {
+			err = err || { status: 400 }	// error or not found
 			return next(err);
 		}
 		tournament = _.extend(tournament, req.body);

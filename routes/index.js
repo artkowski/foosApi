@@ -13,6 +13,7 @@ router.use('/leagues', require('./leagues'))
 router.use( require('./leagues/players'))
 router.use( require('./tournaments'))
 router.use( require('./competitions'))
+router.use( require('./teams'))
 
 router.get('/', function(req, res, next) {
 	// res.render('index', { title: 'Express' });

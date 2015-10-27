@@ -1,6 +1,15 @@
-var express = require('express');
-var router = express.Router();
-var League = require('../../models/League');
+var express = require('express'),
+	router = express.Router(),
+	League = require('../../models/League'),
+	_ = require('lodash');
+
+var _populateOptions = {
+	path: 'tournaments',
+	select: {_league: 0 },
+	options: {
+		sort: {created: -1}
+	}
+};
 
 router
 // getAll leagues
@@ -15,13 +24,7 @@ router
 	League.findById(req.params.id)
 		// .populate('players')
 		.select({players: 0})
-		.populate({
-			path: 'tournaments',
-			select: {_league: 0 },
-			options: {
-				sort: {created: -1}
-			}
-		})
+		.populate(_populateOptions)
 		.exec(function(err, league) {
 		if(err) {
 			err.status = 400;
@@ -43,7 +46,9 @@ router
 })
 // edit league
 .put('/:id', function(req, res) {
-	League.findById(req.params.id, function(err, league) {
+	League.findById(req.params.id)
+	.populate(_populateOptions)
+	.exec(function(err, league) {
 		if (err) return res.status(400).json({success: false, error: err});
 		league = _.extend(league, req.body);
 		league.save(function(err) {

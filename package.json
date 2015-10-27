@@ -26,6 +26,7 @@
     "jsonwebtoken": "^5.4.0",
     "lodash": "^3.10.1",
     "mongoose": "^4.1.10",
+    "mongoose-deep-populate": "^2.0.2",
     "morgan": "^1.6.1",
     "node-gyp": "^3.0.3"
   }

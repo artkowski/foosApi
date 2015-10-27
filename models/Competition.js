@@ -1,5 +1,6 @@
 var mongoose = require('mongoose'),
-	Schema = mongoose.Schema;
+	Schema = mongoose.Schema,
+	deepPopulate = require('mongoose-deep-populate')(mongoose);
 
 var CompetitionSchema = new Schema({
 	_tournament: {
@@ -13,6 +14,18 @@ var CompetitionSchema = new Schema({
 	start: { type: Boolean, default: 0 },
 	finish: { type: Boolean, default: 0 },
 	created: { type: Date, default: Date.now},
+	teams: [{ type: Schema.Types.ObjectId, ref: 'Team'}],
+	matches: [{ type: Schema.Types.ObjectId, ref: 'Match'}]
+});
+
+CompetitionSchema.plugin(deepPopulate, {
+	populate: {
+		'teams': {
+			options: {
+				sort: {totalPoints: -1}
+			}
+		}
+	}
 });
 
 module.exports = mongoose.model('Competition', CompetitionSchema);

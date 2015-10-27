@@ -11,7 +11,7 @@ var PlayerSchema = new Schema({
 		first: {type: String, required: true},
 		last: String
 	},
-	syg: String,
+	syg: String,	// to musi być z defaultem generowanym
 	points: { type: Number, index: -1, default: 0},
 	city: String,
 	className: String,
