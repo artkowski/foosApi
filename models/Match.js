@@ -7,12 +7,18 @@ var MatchSchema = new Schema({
 		ref: 'Competition'
 	},
 	order: {type: Number, min: 1},
+	round: {type: Number, default: 1},
+	number: { type: Number },
 	team1: { type: Schema.Types.ObjectId, ref: 'Team' },
 	team2: { type: Schema.Types.ObjectId, ref: 'Team' },
 	created: { type: Date, default: Date.now()},
-	call: { type: Number, default: 0 },
+	calls: [{
+		date: { type: Date, default: Date.now()},
+		table: Number
+	}],
 	start: { type: Boolean, default: false },
-	winner: { type: Schema.Types.ObjectId, ref: 'Team' }
+	winner: { type: Schema.Types.ObjectId, ref: 'Team' },
+	losses: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model('Match', MatchSchema);

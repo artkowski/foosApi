@@ -15,7 +15,8 @@ var CompetitionSchema = new Schema({
 	finish: { type: Boolean, default: 0 },
 	created: { type: Date, default: Date.now},
 	teams: [{ type: Schema.Types.ObjectId, ref: 'Team'}],
-	matches: [{ type: Schema.Types.ObjectId, ref: 'Match'}]
+	matches: [{ type: Schema.Types.ObjectId, ref: 'Match'}],
+	startSize: Number	// ilość meczy w pierwszej rundzie
 });
 
 CompetitionSchema.plugin(deepPopulate, {
