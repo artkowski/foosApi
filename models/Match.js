@@ -18,7 +18,8 @@ var MatchSchema = new Schema({
 	}],
 	start: { type: Boolean, default: false },
 	winner: { type: Schema.Types.ObjectId, ref: 'Team' },
-	losses: { type: Number, default: 0 }
+	losses: { type: Number, default: 0 },
+	final: { type: Boolean, default: 0}
 });
 
 module.exports = mongoose.model('Match', MatchSchema);

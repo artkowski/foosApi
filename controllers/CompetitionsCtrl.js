@@ -215,7 +215,7 @@ module.exports = function() {
 			match.winner = winnerId;
 
 			var winner, looser;
-			if(match.team1+'' === winnerId) {
+			if(match.team1+'' === winnerId+'') {
 				winner = match.team1;
 				looser = match.team2;
 			} else {
@@ -223,7 +223,17 @@ module.exports = function() {
 				looser = match.team1;
 			}
 
-			// zamiast cb można użyć primses
+			// if match.final
+			if(match.final) {
+				return match.save(function(err) {
+					if(err) return next(err);
+					res.json({
+						success: true
+					});
+				});
+			}
+
+			// zamiast cb można użyć promises
 			setMatchWinner(match, winner, next, function(newMatch) {
 				console.log('setMatchWinner READY');
 				setMatchLooser(match, looser, next, function(newMatch) {
@@ -243,12 +253,23 @@ module.exports = function() {
 	}
 
 	function setMatchWinner(match, team, next, cb) {
+		if(!team) {
+			console.error('setMatchWinner', 'team empty')
+			return cb();
+		}
 		var competition = match._competition;
 		if(competition.type === "2KO") {
 			console.log(competition.type);
 			var newMatch = {
-				_competition: match._competition
+				_competition: match._competition,
+				round: null,
+				order: null,
+				losses: match.losses
 			};
+
+			// jeżeli w poprzednim meczu był tylko jeden mecz to przechodzimy do finału
+			// tak to działa tylko na prawej stronie
+			var goToFinal = false;
 			if(match.losses == 0) {
 				// jeżeli jesteśmy na stronie wygranych
 				// i nie jest to runda pierwsza to przeskakujemy o 3 rundy
@@ -261,21 +282,34 @@ module.exports = function() {
 					// jeżeli tak to powiększamy
 					newMatch.round++;
 				}
+				// console.log(getRoundNbOfMatch(competition.startSize, newMatch.round));
+				goToFinal = getRoundNbOfMatch(competition.startSize, newMatch.round) == 0.5 ? 1 : 0;
+				if(goToFinal) {
+					// jeżeli dla rundy ilość meczy to pół tzn, że idziemy do finału
+					// czyli musimy cofnąć się o jedną rundę (do rundy wygranych)
+					newMatch.round--;
+				}
 			}
+			console.log('goToFinal', goToFinal);
 			// jeżeli jesteśm na przegranych i przeskoczyliśmy tylko jedną rundę,
 			// to order zostaje taki sam
+			// przy finale spełniany jest ten sam warunek
 			if(match.losses && match.round + 1 === newMatch.round) {
 				newMatch.order = match.order;
 			} else {
 				// w innym przypadku liczymy połowe poprzedniego ordera zaokrąglonego w górę
 				newMatch.order = Math.ceil(match.order/2);
-				
 			}
 			
 			console.log('round', match.round);
 			console.log('nextRound', newMatch.round);
 			console.log('order', newMatch.order);
 
+			if(goToFinal) {
+				// musimy ustawić losses na zero żeby znalazł, lub stworzył, ten sam mecz
+				// moglibyśmy wposzukać tylko po competition, order i round, żeby uniknąc tego
+				newMatch.losses = 0;
+			}
 
 			Match.findOne(newMatch, function(err, findMatch) {
 				if(err) return next(err);
@@ -291,9 +325,11 @@ module.exports = function() {
 				// sprawdzamy czy nie ma gdzieś wypełnionej drużyny, którąś z naszego meczy
 				// gdyby byłyo to ustawiamy na null, ponieważ będziemy wprowadzać aktualizację
 				if(newMatch.team1+'' == match.team1+'' || newMatch.team1+'' == match.team2+'') {
+					console.log('Clear team1')
 					newMatch.team1 = null;
 				}
 				if(newMatch.team2+'' == match.team1+'' || newMatch.team2+'' == match.team2+'') {
+					console.log('Clear team2')
 					newMatch.team2 = null;
 				}
 
@@ -303,14 +339,22 @@ module.exports = function() {
 				}
 
 				// przypisyanie drużyny do nowego meczu
-				if(match.order%2 || !!newMatch.team2) {
+				if(!newMatch.team1 &&  (match.order%2 || !!newMatch.team2)) {
 					// jeżeli nieparzyste to winner leci do team1
 					// jeżeli newMatch.team2 jest zajęty to też tutaj
 					newMatch.team1 = team;
-				} else {
+				} else if(!newMatch.team2) {
 					// jeżeli parzyste to do team2
 					newMatch.team2 = team;
+				} else {
+					return next({status: 500, message: 'Drużyny nie zostały przypisane'});
 				}
+
+				// przypiujemy do finału, że jest finałem - dopiero jak schodzi z lewej strony gracz
+				if(goToFinal) {
+					newMatch.final = true;
+				}
+
 				newMatch.save(function(err) {
 					if(err) return next(err);
 					cb(newMatch);
@@ -331,20 +375,17 @@ module.exports = function() {
 				return cb();
 			}
 			var newMatch = {
-				_competition: match._competition
+				_competition: match._competition,
+				round: match.round + 2,	// przegrany zawsze idze 2 rundy dalej
+				order: null,
+				losses: match.losses +1
 			};
-			newMatch.round = match.round + 2;
-			newMatch.losses = match.losses +1;
+
 			if(match.round === 1) {
 				newMatch.order = Math.ceil(match.order/2);
 			} else {
-				// dla rundy 2 jest taki:
-				// match.round - tutaj potrzebujemy która to jest runda po tej stronie
-				// winnerRound - ile było round wygranych
-				// winnerRound = Math.floor(match.round/ 3) + match.round%3;
-				var roundNbOfMatch = competition.startSize / (2*Math.floor((newMatch.round-1)/3));
+				var roundNbOfMatch = getRoundNbOfMatch(competition.startSize, newMatch.round);
 				console.log(newMatch.round, roundNbOfMatch)
-				// chujowy pomysł z tym dzieleniem
 				newMatch.order = roundNbOfMatch - match.order+1;
 			}
 
@@ -358,8 +399,18 @@ module.exports = function() {
 					addMatchToCompetition(competition._id, newMatch._id);
 				}
 
+				// sprawdzamy czy nie ma gdzieś wypełnionej drużyny, którąś z naszego meczy
+				// gdyby byłyo to ustawiamy na null, ponieważ będziemy wprowadzać aktualizację
+				if(newMatch.team1+'' == match.team1+'' || newMatch.team1+'' == match.team2+'') {
+					newMatch.team1 = null;
+				}
+				if(newMatch.team2+'' == match.team1+'' || newMatch.team2+'' == match.team2+'') {
+					newMatch.team2 = null;
+				}
+
+
 				// przegranego dajemy do team2, chyba że nie jest wolna
-				if(!!newMatch.team2) {
+				if(!newMatch.team2) {
 					newMatch.team2 = team;
 				} else {
 					newMatch.team1 = team;
@@ -378,6 +429,15 @@ module.exports = function() {
 	// private
 	function isWinnersRound(round) {
 		return (round-2)%3;
+	}
+
+	function getRoundNbOfMatch(startSize, round) {
+		// sprwadzamy ile razy doszło do podzielenia liczby meczy
+		var nbOfCuts = Math.ceil((round-1)/3);	
+		console.log('cuts', nbOfCuts);
+		console.log('pow', Math.pow(2, nbOfCuts));
+		return startSize / //dzielimy ilość początkowych meczy
+												 Math.pow(2, nbOfCuts);	// przez potęgę dwójki, gdzie wykładnikiem jest liczba podzieleń ilości meczy
 	}
 
 	function deleteCompetitionMatches(competition, cb) {
