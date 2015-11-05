@@ -32,13 +32,22 @@ module.exports = function() {
 
 	function get(req, res, next) {
 		Competition.findById(req.params.id)
-		.deepPopulate('matches.team1.players matches.team2.players matches.winner.players', {
+		.deepPopulate(
+			'matches.team1.players matches.team2.players matches.winner.players results.team.players', {
 			populate: {
 				'matches': {
 					options: {
 						sort: {
 							round: 1,
 							order: 1
+						}
+					}
+				},
+				'results': {
+					options: {
+						sort: {
+							place: -1,
+							date: 1
 						}
 					}
 				}
@@ -134,6 +143,8 @@ module.exports = function() {
 				// dopisujemy mecze do konkurencji
 				competition.matches = matches;
 				competition.startSize = matches.length;
+				competition.results = [];
+				competition.start = true;
 				competition.save(function(err) {
 					// success
 					return res.json(matches);
@@ -196,6 +207,11 @@ module.exports = function() {
 		})
 	}
 
+
+	/**
+	* select winner
+	*
+	*/
 	function selectWinner(req, res, next) {
 		var matchId = req.body.matchId;
 		var winnerId = req.body.winnerId;
@@ -236,8 +252,8 @@ module.exports = function() {
 			// zamiast cb można użyć promises
 			setMatchWinner(match, winner, next, function(newMatch) {
 				console.log('setMatchWinner READY');
-				setMatchLooser(match, looser, next, function(newMatch) {
-					console.log('setMatchLooser READY');
+				setMatchLoser(match, looser, next, function(newMatch) {
+					console.log('setMatchLoser READY');
 
 					// zapisujemy
 					match.save(function(err) {
@@ -278,7 +294,7 @@ module.exports = function() {
 				// jeżeli jest to strona przegranych
 				newMatch.round = match.round + 1;
 				//sprawdzamy czy nie wypadła runda wygranych
-				while(!isWinnersRound(newMatch.round)) {
+				while(!!isWinnersRound(newMatch.round)) {
 					// jeżeli tak to powiększamy
 					newMatch.round++;
 				}
@@ -366,17 +382,20 @@ module.exports = function() {
 		// console.log(match._competition)
 	}	
 
-	function setMatchLooser(match, team, next, cb) {
+	function setMatchLoser(match, team, next, cb) {
 		var competition = match._competition;
 		if(competition.type === "2KO") {
 			if(match.losses > 0) {
 				console.log('Gracz odpada')
+				return setTeamLoser(competition, match, team, next, function(competition) {
+					return cb();
+				});
 				// można ustawić, że gracz odpada
-				return cb();
+				// return cb();
 			}
 			var newMatch = {
 				_competition: match._competition,
-				round: match.round + 2,	// przegrany zawsze idze 2 rundy dalej
+				round: match.round + 2,	// przegrany zawsze idzie 2 rundy dalej
 				order: null,
 				losses: match.losses +1
 			};
@@ -419,17 +438,83 @@ module.exports = function() {
 				newMatch.save(function(err) {
 					if(err) return next(err);
 					cb(newMatch);
-				})
+				});
 				
 			})
 
 		}
 	}
 
+	function setTeamLoser(competition, match, team, next, cb) {
+		var place = 0;
+
+		var result = {
+			team: team,
+			place: countPlace(competition.startSize, match.round)
+		}
+		console.log(result)
+
+		competition.results.push(result);
+		competition.save(function(err) {
+			if(err) return next(err);
+			return cb(competition);
+		});
+	}
+
 	// private
 	function isWinnersRound(round) {
-		return (round-2)%3;
+		return !( (round-2)%3);
 	}
+
+	// function getPlace(startSize, round) {
+	// 	var loseRound = getLoseRound(round);
+	// 	var nbOfTeams = startSize *2;
+
+	// 	console.log('loseRound', loseRound);
+	// 	return nbOfTeams - (nbOfTeams/(2*loseRound)); // place
+	// }
+
+	function countPlace(startSize, round) {
+		var sum = 0;
+		var nbOfTeams = startSize * 2;
+
+		var i = 3;	// first lose round
+		for(; i <= round; i++) {
+			if(isWinnersRound(i)) continue;
+			console.log(i);
+			var matches = getRoundNbOfMatch(startSize, i);
+			console.log('hmm', matches);
+			sum += Math.ceil(matches);
+		}
+		console.log(sum);
+		return nbOfTeams - sum -1;
+	}
+
+	// zwraca numer rundy przegranych
+	// function getLoseRound(round) {
+	// 	// ilośc rund pomniejszona o ilość cięć, pomniejszona o 1 (na początku sa dwie rundu po prawej)
+	// 	return round - Math.ceil((round-1)/3) - 1;
+	// }
+
+	// function countPlace(startSize, round) {
+	// 	var sum = 0;
+	// 	var nbOfTeams = startSize * 2;
+
+	// 	var i = getLoseRound(3);	// first lose round
+	// 	for(; i <= getLoseRound(round); i++) {
+	// 		var matches = getLoseRoundNbOfMatch(startSize, i);
+	// 		console.log('hmm', matches);
+	// 		sum += Math.ceil(matches);
+	// 	}
+	// 	console.log(sum);
+	// 	return nbOfTeams - sum;
+	// }
+
+
+	// function getLoseRoundNbOfMatch(startSize, loseRound) {
+	// 	var nbOfCuts = Math.ceil(loseRound / 2);
+	// 	return startSize / Math.pow(2, nbOfCuts);
+	// }
 
 	function getRoundNbOfMatch(startSize, round) {
 		// sprwadzamy ile razy doszło do podzielenia liczby meczy
