@@ -13,7 +13,8 @@ var TournamentSchema = new Schema({
 	endDate: Date,
 	city: String,
 	created: { type: Date, default: Date.now},
-	competitions: [{ type: Schema.Types.ObjectId, ref: 'Competition'}]
+	competitions: [{ type: Schema.Types.ObjectId, ref: 'Competition'}],
+	owners: [ {type: Schema.Types.ObjectId, ref: 'User'}]
 });
 
 module.exports = mongoose.model('Tournament', TournamentSchema);

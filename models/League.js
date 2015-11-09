@@ -6,8 +6,8 @@ var LeagueSchema = new Schema({
 	created: {type: Date, default: Date.now},
 	owners: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 	players: [{ type: Schema.Types.ObjectId, ref: 'Player' }],
-	tournaments: [{ type: Schema.Types.ObjectId, ref: 'Tournament'}]
+	tournaments: [{ type: Schema.Types.ObjectId, ref: 'Tournament'}],
+	owners: [ {type: Schema.Types.ObjectId, ref: 'User'}]
 });
-
 
 module.exports = mongoose.model('League', LeagueSchema);

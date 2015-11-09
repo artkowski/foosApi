@@ -1,15 +1,20 @@
 var express = require('express'),
-	router = express.Router(),
+	router = express.Router({mergeParams: true}),
 	CompetitionsCtrl = require('../../controllers/CompetitionsCtrl');
-
-var resource = '/leagues/:leagueId/tournaments/:tournamentId/competitions';
+	AuthCtrl = require('../../controllers/AuthCtrl');
+	TournamentsCtrl = require('../../controllers/TournamentsCtrl');
+	
+var authMiddlewares = [
+	AuthCtrl.verify,
+	TournamentsCtrl.checkOwner
+];
 
 router
-.get(resource, CompetitionsCtrl.getAll)
-.get(resource + '/:id', CompetitionsCtrl.get)
-.post(resource, CompetitionsCtrl.add)
-.put(resource + '/:id', CompetitionsCtrl.edit)
-.patch(resource + '/:id', function(req, res, next) {
+.get('/', CompetitionsCtrl.getAll)
+.get('/:id', CompetitionsCtrl.get)
+.post('/', authMiddlewares, CompetitionsCtrl.add)
+.put('/:id', authMiddlewares, CompetitionsCtrl.edit)
+.patch('/:id', authMiddlewares, function(req, res, next) {
 	console.log(req.body, req.params);
 	// akcja start
 	if(req.body.action == 'start') {
@@ -24,6 +29,6 @@ router
 	
 	return next({status: 400});
 })
-.delete(resource + '/:id', CompetitionsCtrl.remove)
+.delete('/:id', authMiddlewares, CompetitionsCtrl.remove)
 
 module.exports = router;

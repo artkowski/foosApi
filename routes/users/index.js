@@ -1,52 +1,13 @@
-var express = require('express');
-var router = express.Router();
-var _ = require('lodash')
-var User = require('../../models/User')
+var express = require('express')
+	, router = express.Router()
+	, UsersCtrl = require('../../controllers/UsersCtrl')
+	, AuthCtrl = require('../../controllers/AuthCtrl')
 
 router
-.get('/', function(req, res, next) {
-	User.find(function(err, users) {
-		if(err) console.error(err);
-  	res.json(users);
-	})
-})
-.post('/', function(req, res) {
-	console.log(req.body);
-	var user = new User(req.body);
-	user.save(function(err, user) {
-		if(err) {
-			return res.status(400).json({success: false, error: err});
-		} 
-		res.json({success: true, user: user});
-	});
-	// res.end();
-})
-.put('/:id', function(req, res) {
-	// find and update in one call to the database
-	// User.findByIdAndUpdate(req.params.id, req.body, function(err, user) {
-	// 	if(err) return res.json({success: false, error: err});
-	// 	user = _.extend(user, req.body);
-	// 	res.json({success: true, user: user});
-	// });
-
-	// if we need hooks and validation:
-	User.findById(req.params.id, function(err, user) {
-		if (err) return res.status(400).json({success: false, error: err});
-		user = _.extend(user, req.body);
-		user.save(function(err, userUpdated) {
-			if(err) {
-				return res.status(400).json({success: false, error: err});
-			}
-			res.json({success: true, user: userUpdated});
-		});
-	});
-})
-.delete('/:id', function(req, res) {
-	console.log(req.params.id);
-	User.remove({_id: req.params.id}, function(err) {
-		if(err) return console.error(err);
-		res.json({success: true});
-	})
-})
+.all(/.*/, AuthCtrl.verify).all(/.*/, AuthCtrl.isAdmin)
+.get('/', UsersCtrl.getAll)
+.post('/', UsersCtrl.add)
+.put('/:id', UsersCtrl.edit)
+.delete('/:id', UsersCtrl.remove)
 
 module.exports = router;

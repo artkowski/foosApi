@@ -23,14 +23,18 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, token");
-  next();
+
+  if ('OPTIONS' == req.method) { 
+	  return res.sendStatus(200); 
+	} 
+	next(); 
 });
 
 app.set('secret', config.secret);
 app.use('/', routes);
 // app.use('/', users);
 
-// how to error handling
+// error handling
 app.use(function(err, req, res, next) {
 	res.status(err.status || 500);
 	res.json({

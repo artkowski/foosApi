@@ -46,7 +46,7 @@ module.exports = function() {
 				'results': {
 					options: {
 						sort: {
-							place: -1,
+							place: 1,
 							date: 1
 						}
 					}
@@ -230,29 +230,33 @@ module.exports = function() {
 			}
 			match.winner = winnerId;
 
-			var winner, looser;
+			var winner, loser;
 			if(match.team1+'' === winnerId+'') {
 				winner = match.team1;
-				looser = match.team2;
+				loser = match.team2;
 			} else {
 				winner = match.team2;
-				looser = match.team1;
+				loser = match.team1;
 			}
 
 			// if match.final
 			if(match.final) {
-				return match.save(function(err) {
-					if(err) return next(err);
-					res.json({
-						success: true
+				return setFinalFinish(match, winner, loser, next, function() {
+					return match.save(function(err) {
+						if(err) return next(err);
+						res.json({
+							success: true
+						});
 					});
+
 				});
+
 			}
 
 			// zamiast cb można użyć promises
 			setMatchWinner(match, winner, next, function(newMatch) {
 				console.log('setMatchWinner READY');
-				setMatchLoser(match, looser, next, function(newMatch) {
+				setMatchLoser(match, loser, next, function(newMatch) {
 					console.log('setMatchLoser READY');
 
 					// zapisujemy
@@ -447,18 +451,41 @@ module.exports = function() {
 
 	function setTeamLoser(competition, match, team, next, cb) {
 		var place = 0;
+		if(!team) {
+			return cb(Competition);
+		}
+		// sprawdza czy drużyna nie jest już w wynikach i usuwa ją
+		// usuwa też te wyniki w których nie ma drużyn
+		competition.results = _.filter(competition.results, function(item) {
+			return (item.team+'' !== team+'') && !!item.team;
+		});
 
 		var result = {
 			team: team,
 			place: countPlace(competition.startSize, match.round)
 		}
-		console.log(result)
+		// competition.results.push(result);
 
 		competition.results.push(result);
+		console.log('results:', competition.results.length);
 		competition.save(function(err) {
 			if(err) return next(err);
 			return cb(competition);
 		});
+	}
+
+	function setFinalFinish(match, winner, loser, next, cb) {
+		var competition = match._competition;
+		// powiększamy rundę o jeden i zapisujemy przegranego
+		match.round++;
+		return setTeamLoser(competition, match, loser, next, function() {
+			// powiększamy o kolejną rundę i zapisujemy wygranego (na 1 miejscu)
+			match.round++;
+			return setTeamLoser(competition, match, winner, next, function() {
+				match.round-= 2;
+				return cb();
+			});
+		})
 	}
 
 	// private
@@ -477,17 +504,17 @@ module.exports = function() {
 	function countPlace(startSize, round) {
 		var sum = 0;
 		var nbOfTeams = startSize * 2;
-
+		var matches;
 		var i = 3;	// first lose round
 		for(; i <= round; i++) {
 			if(isWinnersRound(i)) continue;
 			console.log(i);
-			var matches = getRoundNbOfMatch(startSize, i);
+			matches = getRoundNbOfMatch(startSize, i);
 			console.log('hmm', matches);
 			sum += Math.ceil(matches);
 		}
 		console.log(sum);
-		return nbOfTeams - sum -1;
+		return nbOfTeams - sum + 1;
 	}
 
 	// zwraca numer rundy przegranych
@@ -519,8 +546,8 @@ module.exports = function() {
 	function getRoundNbOfMatch(startSize, round) {
 		// sprwadzamy ile razy doszło do podzielenia liczby meczy
 		var nbOfCuts = Math.ceil((round-1)/3);	
-		console.log('cuts', nbOfCuts);
-		console.log('pow', Math.pow(2, nbOfCuts));
+		// console.log('cuts', nbOfCuts);
+		// console.log('pow', Math.pow(2, nbOfCuts));
 		return startSize / //dzielimy ilość początkowych meczy
 												 Math.pow(2, nbOfCuts);	// przez potęgę dwójki, gdzie wykładnikiem jest liczba podzieleń ilości meczy
 	}

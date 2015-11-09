@@ -1,70 +1,23 @@
 var express = require('express'),
 	router = express.Router(),
-	League = require('../../models/League'),
-	_ = require('lodash');
+	AuthCtrl = require('../../controllers/AuthCtrl'),
+	LeaguesCtrl = require('../../controllers/LeaguesCtrl')
 
-var _populateOptions = {
-	path: 'tournaments',
-	select: {_league: 0 },
-	options: {
-		sort: {created: -1}
-	}
-};
 
 router
 // getAll leagues
-.get('/', function(req, res, next) {
-	League.find(function(err, leagues) {
-		if(err) next(err);
-		res.json(leagues);
-	})
-})
+.get('/', LeaguesCtrl.getAll)
 // get league by ID
-.get('/:id', function(req, res, next) {
-	League.findById(req.params.id)
-		// .populate('players')
-		.select({players: 0})
-		.populate(_populateOptions)
-		.exec(function(err, league) {
-		if(err) {
-			err.status = 400;
-			next(err);
-		}
-		res.json(league);
-	})
-})
+.get('/:leagueId', LeaguesCtrl.get)
 // create league
-.post('/', function(req, res) {
-	var league = new League(req.body);
-	league.save(function(err) {
-		if(err) {
-			err.status = 400;
-			next(err);
-		}
-		res.json({success: true, league: league});
-	})
-})
+// only logged user can create league
+.post('/', AuthCtrl.verify, LeaguesCtrl.add)
+// verify
+.all('/:leagueId', AuthCtrl.verify)
+// check owner
+.all('/:leagueId', LeaguesCtrl.checkOwner)
 // edit league
-.put('/:id', function(req, res) {
-	League.findById(req.params.id)
-	.populate(_populateOptions)
-	.exec(function(err, league) {
-		if (err) return res.status(400).json({success: false, error: err});
-		league = _.extend(league, req.body);
-		league.save(function(err) {
-			if(err) {
-				err.status = 400;
-				next(err);
-			}
-			res.json({success: true, league: league});
-		});
-	});
-})
-.delete('/:id', function(req, res) {
-	League.remove({_id: req.params.id}, function(err) {
-		if(err) return res.status(400).json({success: false, error: err});
-		res.json({success: true});
-	})
-})
+.put('/:leagueId', LeaguesCtrl.edit)
+.delete('/:leagueId', LeaguesCtrl.remove)
 
 module.exports = router;
