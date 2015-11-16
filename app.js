@@ -1,17 +1,17 @@
-var express = require('express');
-var app = express();
-var bodyParser = require('body-parser');
-var morgan = require('morgan');
-var mongoose = require('mongoose');
-
 var config = require('./config');
+var express = require('express')
+	, app = express()
+	, http = require('http').Server(app)
+	, io = require('socket.io')(http)
+	, bodyParser = require('body-parser')
+	, morgan = require('morgan')
+	, mongoose = require('mongoose')
+
 
 // var multer = require('multer'); // v1.0.5
 // var upload = multer(); // for parsing multipart/form-data
 
 var routes = require('./routes');
-// var models = require('./models')
-// var users = require('./routes/users');
 
 // bodyParser to get data in req.body
 app.use(bodyParser.json());
@@ -19,8 +19,24 @@ app.use(bodyParser.json());
 // use logger
 app.use(morgan('dev'));
 
+// io.of('/')
+
+io.on('connection', function(socket) {
+	var message = "I'm alive!";
+	console.log(message);
+	socket.emit('message', message);
+
+	socket.on('ping', function(data) {
+		console.log('I received a ping ', data);
+	})
+
+	require('./controllers/CompetitionsCtrl').getWs(socket);
+});
+
 app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
+	// console.log(req.headers.origin)
+  res.header('Access-Control-Allow-Credentials', true);
+  res.header("Access-Control-Allow-Origin", req.headers.origin);
   res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, token");
 
@@ -43,7 +59,6 @@ app.use(function(err, req, res, next) {
 	});
 });
 
-
 mongoose.connect(config.database);
 // otwieramy połaczenie do bazydanych
 var db = mongoose.connection;
@@ -52,13 +67,13 @@ db.once('open', function(callback) {
 	console.log('Db connection opend');
 });
 
-app.set('trust proxy', 'loopback', '127.0.0.1', '192.168.1.12');
+// app.set('trust proxy', 'loopback', '127.0.0.1', '192.168.1.12');
 
 // server
-var server = app.listen(config.port, function() {
+
+var server = http.listen(config.port, function() {
 	var host = server.address().address;
 	var port = server.address().port;
 
 	console.log('Example app listening at http://%s:%s', host, port);
 });
-

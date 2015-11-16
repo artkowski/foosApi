@@ -8,6 +8,7 @@ module.exports = function() {
 	var CompetitionsCtrl = {
 		getAll: getAll,
 		get: get,
+		getWs: getWs,
 		add: add,
 		edit: edit,
 		remove: remove,
@@ -30,8 +31,8 @@ module.exports = function() {
 		})
 	}
 
-	function get(req, res, next) {
-		Competition.findById(req.params.id)
+	function _getOneById(id, cb) {
+		Competition.findById(id)
 		.deepPopulate(
 			'matches.team1.players matches.team2.players matches.winner.players results.team.players', {
 			populate: {
@@ -53,13 +54,61 @@ module.exports = function() {
 				}
 			}
 		})
-		.exec(function(err, competition) {
+		.exec(cb);
+	}
+
+	function get(req, res, next) {
+		_getOneById(req.params.id, function(err, competition) {
 			if(err) {
 				err.status = 400;
 				next(err);
 			}
 			res.json(competition);
 		})
+	}
+
+	function getWs(socket) {
+		
+		socket.on('competitions:get', function(data) {
+			var roomName = 'competition ' + data.competitionId;
+			// console.log('socket.rooms', socket.rooms);
+			_clearRooms(socket);
+			socket.join(roomName);
+			// console.log('getWs socket', data);
+
+			socket.on('competitions:changed', function(data) {
+				_competitionEmit(socket, data.competitionId);
+			});
+
+			_competitionEmit(socket, data.competitionId);
+		})
+
+	}
+
+	function _clearRooms(socket) {
+		var patt = /competition .*/
+		_.each(socket.rooms, function(room) {
+			if(patt.test(room)) {
+				socket.leave(room);
+			}
+		});
+	}
+
+	function _competitionEmit(socket, id) {
+		_getOneById(id, function(err, competition) {
+			if(err) return new Error('Competition get faild');
+			console.log('competition emit');
+			// emitujemy do siebie
+			socket
+			.emit('competitions:competition', competition);
+			// emitujemy do wszystkich innyc
+			socket
+			.broadcast
+			.to('competition ' + id)
+			.emit('competitions:competition', competition);
+			// cb(competition);
+		})
+		
 	}
 
 	function add(req, res, next) {
@@ -121,7 +170,7 @@ module.exports = function() {
 		var competitionId  = req.params.id;
 
 		Competition
-		// szukamy competetion
+		// szukamy competition
 		.findById(competitionId)
 		// chcemy mieć drużyny razem z graczami, bo później zostaną zwrócone
 		.deepPopulate('teams.players')	// deepPopulate - ustawione sortowanie
